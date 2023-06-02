@@ -1,0 +1,68 @@
+---
+- hosts: all
+  vars:
+    user: "admin"
+    password: "Passw0rd$"
+  tasks:
+   - name: yum install unzip net-tools wget java-1.8.0-openjdk.x86_64
+     yum:
+       name: ['unzip', 'net-tools','wget','java-1.8.0-openjdk.x86_64']
+       state: latest
+   - name: create group jboss-eap
+     group:
+       name: jboss-eap
+       state: present
+       gid: 2048
+   - name: create user jboss-eap
+     user:
+       name: jboss-eap
+       comment: JBoss EAP
+       state: present
+       password: "{{ password | password_hash('sha512') }}"
+       uid: 2048
+       group: jboss-eap
+       createhome: yes
+       home: /opt/jboss-eap
+       shell: /bin/bash
+   - name: Add 8080 port to firewall
+     firewalld:
+       port: "8080/tcp"
+       state: enabled
+       immediate: true
+       permanent: true
+   - name: Add 9990 port to firewall
+     firewalld:
+       port: "9990/tcp"
+       state: enabled
+       immediate: true
+       permanent: true
+   - name: Add 9999 port to firewall
+     firewalld:
+       port: "9990/tcp"
+       state: enabled
+       immediate: true
+       permanent: true
+   - name: Download JBoss EAP 7.4.6 to /tmp
+     get_url:
+       url: ftp://192.168.10.120/jboss-eap-7.4.6.custom.tar.gz
+       dest: /tmp
+   - name: Extract jboss-eap-7.4.6.custom.tar.gz to /opt/jboss-eap
+     shell: tar -zxvf /tmp/jboss-eap-7.4.6.custom.tar.gz -C /opt/jboss-eap/
+   - name: Copy jboss-eap.conf
+     shell: cp /opt/jboss-eap/bin/init.d/jboss-eap.conf /etc/default/jboss-eap.conf
+   - name: Copy jboss-eap-rhel.sh
+     shell: cp /opt/jboss-eap/bin/init.d/jboss-eap-rhel.sh /etc/init.d/jboss-eap-rhel.sh
+   - name: Enable service
+     shell: chkconfig --add jboss-eap-rhel.sh
+   - name: Enable service
+     shell: systemctl daemon-reload
+   - name: Enable service
+     shell: chkconfig jboss-eap-rhel.sh on
+   - name: Enable jboss-eap-rhel service
+     service:
+       name: jboss-eap-rhel.sh
+       enabled: yes
+   - name: Start jboss-eap-rhel service
+     service:
+       name: jboss-eap-rhel
+       state: started
